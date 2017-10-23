@@ -1,0 +1,76 @@
+.leaflet-container .leaflet-control-gotoxy{
+	position:relative;
+	float:left;
+	background:#fff;
+	color:#1978cf;
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+	background-color: rgba(255, 255, 255, 0.8);
+	z-index:1000;	
+	box-shadow: 0 1px 7px rgba(0,0,0,0.65);
+	margin-left: 10px;
+	margin-top: 10px;
+}
+
+.leaflet-control-gotoxy .gotoxy-button{
+	display:block;
+	float:left;
+	width:35px;
+	height:35px;	
+	background: url('../../../../images/extension/layer/gotoxy/xy.svg') #fff;
+	border-radius:4px;
+}
+
+.leaflet-control-gotoxy .gotoXY-title{
+	color: black;
+}
+
+.leaflet-control-gotoxy .gotoXY-div{
+	color: black;
+}
+
+.leaflet-control-gotoxy .gotoXY-label{
+	color: black;
+}
+
+.leaflet-control-gotoxy .gotoXY-input{
+	background: #fff;
+	border: 1px solid rgba(0,0,0,.15);
+	border-radius: .25rem;
+	width:150px;
+	height:30px;
+	line-height: 1.25;
+	padding:0 18px 0 2px;
+	margin:3px 0 3px 3px;
+}
+.leaflet-control-gotoxy .gotoXY-close{
+display:block;
+	width:22px;
+	height:18px;
+	position:absolute;
+	right:27px;
+	margin: -18px;
+	background: url('../../../../images/extension/layer/gotoxy/search-icon.png') no-repeat 0 -46px;
+	text-decoration:none;
+	filter: alpha(opacity=80);
+	opacity: 0.8;
+	
+}    
+
+.leaflet-control-gotoxy .gotoXY-div{
+	margin: 5px 0px;
+	
+}
+
+.leaflet-control-gotoxy .gotoXY-search{
+	padding: 10px;
+	color: white;
+}
+
+.leaflet-control-gotoxy .search-button {
+	float: right;
+    border-radius: 4px;
+    color: white;
+    margin: 3px;
+}

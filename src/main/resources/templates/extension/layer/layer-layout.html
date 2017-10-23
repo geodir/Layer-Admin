@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<!--/* Head takes 3 arguments that are fragments */-->
+<head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+
+<!--/* Default links; can be replaced by the calling templates */-->
+<link rel="stylesheet" type="text/css"
+	href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css"
+	th:href="@{/webjars/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css}" />
+
+
+<!--/* Default scripts; can be replaced by the calling templates */-->
+<script type="text/javascript"
+	src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js"
+	th:src="@{/webjars/tether/1.4.0/dist/js/tether.min.js}"></script>
+<!-- /.container -->
+<script type="text/javascript" src="/webjars/jquery/3.2.0/jquery.min.js"
+	th:src="@{/webjars/jquery/3.2.0/jquery.min.js}"></script>
+<script type="text/javascript"
+	src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js"
+	th:src="@{/webjars/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js}"></script>
+<th:block th:fragment="geodir-map-control-css"
+	th:each="_control : ${CONTROL_EXTENSION}">
+	<th:block
+		th:replace="${'extension/layer/layer-'+ _control +'-control'} :: ${'map-control-'+ _control+'-css'}" />
+</th:block>
+
+<th:block th:fragment="geodir-map-options-css" th:each="_option : ${LAYER_OPTION_EXTENSION}">
+	<th:block
+		th:replace="${'extension/layer/options/'+ _option +'-option'} :: css" />
+</th:block>
+
+<th:block
+	th:replace="extension/layer/layer-draw-control :: map-control-draw-css" />
+
+<link th:fragment="layer-layout-css" rel="stylesheet"
+	href="../static/css/layer-layout.css"
+	th:href="@{/css/layer-layout.css}" />
+</head>
+<body>
+
+	<!--/* Header fragment */-->
+	<div class="container" th:fragment="layer" id="geodir-layer-panel-id">
+
+		<div class="form-group">
+			<button type="button" class="btn btn-primary btnCyan"
+				data-toggle="modal" data-target="#myModal" id="trigger-btn">Agregar</button>
+			<br> <br> <br>
+		</div>
+		<div class="form-group">
+
+			<script id="geodir-layer-template" type="text/x-handlebars-template">
+      	{{!-- <ul id="sortable" class="list-group"> --}}
+		{{!-- {{#each layers}} --}}
+				<li class="list-group-item justify-content-between geodir-layer styleCapa"
+					id="geodir-layer-id-{{id}}" geodir-layer-id="{{id}}">
+					<label><img class="layers" src="../../images/extension/layer/{{geometryType}}.svg">&nbsp;&nbsp;{{alias}}</label>
+					<div class="btn-group" role="group"
+						aria-label="Button group with nested dropdown">
+						<button type="button" class="btn btn-secondary btn-visible-layer styleAction"
+							geodir-layer-visible="{{visible}}"
+							geodir-layer-id="{{id}}"
+							id="btn-visible-layer-{{id}}">
+							<span class="fa {{#if visible}}imgMostrar{{else}}imgOcultar{{/if}}"
+								aria-hidden="true"></span>
+						</button>
+						<div class="btn-group" role="group">
+							<button id="btnGroupDrop1" type="button"
+								class="btn btn-secondary styleAction" data-toggle="dropdown"
+								aria-haspopup="true" aria-expanded="false">
+								<span class="fa fa-ellipsis-v" aria-hidden="true"></span>
+							</button>
+							<div class="dropdown-menu drowstyle" aria-labelledby="btnGroupDrop1">
+								<a class="dropdown-item btn-delete-layer" href="#" 
+									id="btn-delete-layer-{{id}}" geodir-layer-id="{{id}}"><span
+									class="fa fa-trash-o"></span> Eliminar</a>
+								<a class="dropdown-item " href="#"><span
+									class="fa fa-download"></span> Descargar shape</a>
+							</div>
+						</div>
+					</div>
+				</li>
+  		{{!-- {{/each}} --}}
+		{{!-- </ul>  --}}
+    	</script>
+			<div id="geodir-layer-list-el">
+				<ul id="geodir-layer-list" class="list-group" style="width: 100%;" >
+					<li :geodir-layer-id="_layer.id" :id="'geodir-layer-id-'+_layer.id"
+						class="list-group-item justify-content-between geodir-layer styleCapa"
+						v-bind:class="activelayer(_layer.id)"
+						v-for="(_layer,index) in layers">
+						<label><img class="layers" :src="'../../images/extension/layer/'+_layer.geometryType+'.svg'">&nbsp;&nbsp;{{_layer.alias}} &nbsp;&nbsp;({{_layer.records}})</label>
+						<div class="btn-group" role="group"
+							aria-label="Button group with nested dropdown">
+							<button type="button" v-on:click="showlayer(_layer)"
+								class="btn btn-secondary btn-visible-layer styleAction">
+								<span class="fa" v-bind:class="visbleClass(_layer.visible)"
+									aria-hidden="true"></span>
+							</button>
+							<div class="btn-group" role="group">
+								<button :id="'btnGroupDrop'+_layer.id" type="button"
+									class="btn btn-secondary styleAction geodir-layer-option" data-toggle="dropdown"
+									aria-haspopup="true" aria-expanded="false">
+									<span class="fa fa-ellipsis-v" aria-hidden="true"></span>
+								</button>
+								<div class="dropdown-menu drowstyle"
+									:aria-labelledby="'btnGroupDrop'+_layer.id">
+									<component v-for="_opt in options"
+										v-bind:layer="_layer" :layer-index="index"
+										:is="'geodir-layer-option-'+_opt" :key="_opt"> </component>
+								</div>
+							</div>
+						</div></li>
+				</ul>
+			</div>
+
+		</div>
+
+		<script th:inline="javascript">
+/*<![CDATA[*/
+  $(function(window, document, undefined) {
+		var GEODIR = {
+				version: "0.1"
+		};
+		GEODIR._on = function(type, fn, context) {
+			this._events = this._events || {};
+			var typeListeners = this._events[type];
+			if (!typeListeners) {
+				typeListeners = [];
+				this._events[type] = typeListeners;
+			}
+			if (context === this) {
+				context = undefined;
+			}
+			var newListener = {fn: fn, ctx: context},
+			    listeners = typeListeners;
+			for (var i = 0, len = listeners.length; i < len; i++) {
+				if (listeners[i].fn === fn && listeners[i].ctx === context) {
+					return;
+				}
+			}
+			listeners.push(newListener);
+		};
+
+		GEODIR.fire = function(type, data, propagate) {
+			if (this._events) {
+				var listeners = this._events[type];
+				if (listeners) {
+					this._firingCount = (this._firingCount + 1) || 1;
+					for (var i = 0, len = listeners.length; i < len; i++) {
+						var l = listeners[i];
+// 						l.fn.call(l.ctx || this, event);
+						l.fn.call(data || this, event);
+					}
+					this._firingCount--;
+				}
+			}
+			return this;
+		};
+		GEODIR.Event=[];
+		GEODIR.Event.ADDLAYER = 'addLayer';
+		GEODIR.Event.REMOVELAYER = 'removeLayer';
+		GEODIR.Event.CHANGELAYEREVENT = 'changeLayerEvent';
+		GEODIR.Event.FILTERLAYEREVENT = 'filterLayerEvent';
+		
+		function expose() {
+			window.GEODIR = GEODIR;
+		}
+		
+		if (typeof window !== 'undefined') {
+			expose();
+		}
+		GEODIR.mapcontrols={};
+	 	GEODIR.CurrentLayerId = /*[[${CurrentLayerId}]]*/;
+	 	GEODIR.ControlExtension = /*[[${CONTROL_EXTENSION}]]*/;
+	 	GEODIR.LayerExtension = /*[[${LAYER_EXTENSION}]]*/;
+	 	GEODIR.LayerOptions = /*[[${LAYER_OPTION_EXTENSION}]]*/;
+	 	GEODIR.serverContext = [[@{/}]];
+	 	let instance1;
+		function loadGeodirAdmin(){
+			
+			$.getJSON(GEODIR.serverContext+'geodir/ext/basemap/json',function(conf){
+				GEODIR.MapConfiguracion = conf;
+				GEODIR.SelectedBaseLayer = conf.baseName;
+				instance1 = GeodirLayerAdmin.getInstance(GEODIR);
+				loadGeodirLayers();
+			});						
+		}
+
+		function loadGeodirLayers(){
+			$.getJSON(GEODIR.serverContext+'geodir/ext/layer/json',function(lyrs){
+				let layers=lyrs;
+				instance1.addLayers(layers);
+			});
+		}
+		window.onload = loadGeodirAdmin;
+  }(window, document));
+/*]]>*/
+</script>
+
+		<th:block th:each="_option : ${LAYER_OPTION_EXTENSION}">
+			<th:block
+				th:replace="${'extension/layer/options/'+ _option +'-option'} :: js" />
+		</th:block>
+
+		<script th:inline="javascript">
+/*<![CDATA[*/
+            		var vue_geodir_layer_list_el = new Vue({
+					 el: '#geodir-layer-list-el',
+					 data: function(){
+					  	return {
+						  layers:[],
+						  options:GEODIR.LayerOptions,
+						  layeridactive : 0,
+						  showModal: false,
+						};
+					 },
+					 computed: {
+						
+					},
+					 created: function(){
+						 let _data =this;
+						 GEODIR._on('loaded',function(){
+	 							let data = _data;
+	 							var geodiradmins = this;
+	 							this.on('addLayer',
+	 							function () {
+		 							let subData = data;
+		 							let serverContext = [[@{/}]];
+		 							let __data = this.data;
+	 								$.getJSON(serverContext+'geodir/ext/layer/options/'+this.data.id,function(configuration){
+	 									__data.optionsData = configuration;
+// 	 									subData.layers.push(__data);
+	 									subData.layers.unshift(__data);
+	 									subData.layeridactive=geodiradmins.currentLayerId;
+	 									console.log(geodiradmins.currentLayerId);
+									}.bind(subData));
+	 							});
+						});
+					  }, 
+					  methods: {
+						activelayer: function (id) {
+				  				return {'active': id==this.layeridactive}
+					  	},
+						visbleClass: function (_isVisible) {
+			  				return {
+			  					'imgOcultar': !_isVisible, //fa-eye
+			  					'imgMostrar': _isVisible, //fa-eye-slash
+			  				}
+						},
+						showlayer: function(layer){
+							var subInst = GeodirLayerAdmin.getInstance('');
+				        	subInst.changeVisible(layer.id,!layer.visible);
+				        	layer.visible = !layer.visible;
+						},
+					  },
+					});
+
+					
+          
+/*]]>*/
+</script>
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/layer-layout.js"
+			data-th-src="@{/js/extension/layer/layer-layout.js}"></script>
+		<script th:inline="javascript">
+/*<![CDATA[*/
+				
+			/*]]>*/
+			</script>
+
+
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/L.TileLayer.GeodirWMS.js"
+			data-th-src="@{/js/extension/layer/L.TileLayer.GeodirWMS.js}"></script>
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/base/L.Control.Geodir.js"
+			data-th-src="@{/js/extension/layer/base/L.Control.Geodir.js}"></script>
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/base/terraformer.js"
+			data-th-src="@{/js/extension/layer/base/terraformer.js}"></script>
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/base/L.LatLng.UTM.js"
+			data-th-src="@{/js/extension/layer/base/L.LatLng.UTM.js}"></script>
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/base/mobile-detect.js"
+			data-th-src="@{/js/extension/layer/base/mobile-detect.js}"></script>
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/base/terraformer-wkt.js"
+			data-th-src="@{/js/extension/layer/base/terraformer-wkt.js}"></script>
+		<script type="text/javascript" charset="utf8"
+			src="/static/js/extension/layer/base/Polyline.encoded.js"
+			data-th-src="@{/js/extension/layer/base/Polyline.encoded.js}"></script>
+		<th:block
+			th:replace="extension/layer/layer-draw-control :: map-control-draw-js" />
+
+		<th:block th:each="_control : ${CONTROL_EXTENSION}">
+			<th:block
+				th:replace="${'extension/layer/layer-'+ _control +'-control'} :: ${'map-control-'+ _control+'-js'}" />
+
+			<script type="text/javascript" charset="utf8"
+				src="/static/js/extension/layer/geometryutil/leaflet.geometryutil.js"
+				data-th-src="@{/js/extension/layer/geometryutil/leaflet.geometryutil.js}"></script>
+		</th:block>
+
+
+		<script th:inline="javascript">
+/*<![CDATA[*/
+  $( function() {
+	$( "#geodir-layer-list" ).sortable({
+		containment: "#geodir-layer-panel-id",
+    	update: function(event, ui) {
+        	var productOrder = $(this).sortable('toArray',{attribute: 'geodir-layer-id'});
+        	var subInst = GeodirLayerAdmin.getInstance('');
+        	subInst.reorderGeodirlayers(productOrder);
+		}
+    });
+    $( "#sortable" ).disableSelection();
+  });
+/*]]>*/
+</script>
+
+
+
+
+		<div class="form-group" th:fragment="geodir-layer-list"></div>
+		<div data-layout-fragment="javascript"></div>
+		<script type="text/javascript" charset="utf8"
+			src="../../static/public/js/datatables-defaults.js"
+			data-th-src="@{/webjars/handlebars/4.0.8/handlebars.js}"></script>
+	</div>
+	<div class="container" th:fragment="layer_modals">	
+		<div class="modal fade modal-fullscreen" id="myModal" tabindex="-1"
+			role="dialog" aria-labelledby="myModalLabel">
+			<div class="modal-dialog modal-dialog-geodir-add-layer"
+				role="document">
+				<div class="container modal-content">
+					<div class="row">
+					<div class="col-8">
+						<ul class="nav nav-tabs p-3" role="tablist">
+						<li class="nav-item">
+							<a class="nav-link tabs-modal active" data-toggle="tab" href="#listLayers" role="tab">
+								Capas disponibles
+							</a>
+						</li>
+						<li class="nav-item">
+							<a class="nav-link tabs-modal" data-toggle="tab" href="#geodir-aviable-layers" role="tab">
+								Capa WMS
+							</a>
+						</li>
+					</ul>
+					</div>
+					<div class="col-4">
+						<button type="button" class="close" data-dismiss="modal"
+							aria-label="Close" style="padding: 15px;font-size: 1.8em;">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					</div>
+					
+					
+					<div class="tab-content">
+						<div class="tab-pane active" id="listLayers" role="tabpanel">
+							<!-- <div class="modal-header">
+								<h4 class="modal-title" id="myModalLabel">Capas disponibles</h4>
+								<button type="button" class="close" data-dismiss="modal"
+									aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+								</button>
+							</div> -->
+							<div class="modal-body sizeModal">
+								<table id="timer-entity-table" style="width: 99.7%" class="table"
+									data-datatables="true" data-row-id="layerId" data-select="single"
+									data-z="5988e439" data-order="[[ 1, &quot;asc&quot; ]]"
+									th:data-add-batch-url="@{/geodir/ext/layer/batch/_ID_}"
+									th:data-load-url="@{/geodir/ext/layer/dt}">
+									<caption class="sr-only">List Timers</caption>
+									<thead>
+										<tr>
+											<th data-data="layerId"  data-checkboxes="true"></th>
+											<th data-data="alias">Nombre</th>
+											<th data-data="description">Descripci&oacute;n</th>
+											<th data-data="geometryType">Geometr&iacute;a</th>
+											<th data-data="records">Registros</th>
+											<th data-data="layerId" data-orderable="false"
+												data-searchable="false" class="dttools">Info</th>
+										</tr>
+									</thead>
+								</table>
+							</div>
+							<div class="modal-footer">
+								<!-- 						<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button> -->
+								<button type="button" class="btn btn-primary btnCyan"
+									id="timer-entity-tableAddBatchButton" data-dismiss="modal"
+									aria-label="Confirm">Agregar</button>
+							</div>
+						</div>
+						<div class="tab-pane" id="geodir-aviable-layers" role="tabpanel">
+							<!-- <div class="modal-header">
+								<h4 class="modal-title" id="myModalLabel">Agregar capa WMS</h4>
+								<button type="button" class="close" data-dismiss="modal"
+									aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+								</button>
+							</div> -->
+							<div class="modal-body sizeModal" align="left">
+								<div class="container">
+								<div class="form-group">
+									<label class="col-sm-2 control-label">URL Servidor</label>
+									<input type="url" v-model="server_url" class="form-control"/>
+								</div>
+								<br>
+								<div class="form-group">	
+									<label class="col-sm-2 control-label">Version WMS</label>								
+									<input type="text" v-model="server_version" class="form-control" />
+								</div>	
+								<div class="form-group" v-for="type in server_types">
+									<input type="radio"  v-bind:value="type" v-model="server_typeSelected">
+									<label>{{type}}</label>
+								</div>
+								<br>					       	
+						        <button type="button" v-on:click="listLayers" class="btn btnCyan mb-4">Listar</button>
+						        <br>
+						        <table class="table table-bordered table-list" style="max-width:100%">
+						            <thead>
+						                <tr >
+						                    <th class="hidden-xs">ID</th>
+						                    <th class="text-center">Nombre</th>
+						                    <th class="text-center">Agregar</th>
+						                </tr> 
+						            </thead>
+						            <tbody>
+						                <tr v-for="layer in layers">
+						                    <td class="hidden-xs">{{ layer.id }}</td>
+						                    <td>{{ layer.name }}</td>
+						                    <td align="center">
+						                        <a class="btn btn-secondary" v-on:click="addLayer(layer)" data-dismiss="modal"
+														aria-label="Close" title="Agregar">
+						                        	<em class="fa fa-plus-circle"></em>
+						                        </a>
+						                    </td>
+						                </tr>
+						            </tbody>
+						        </table>
+						        </div>
+							</div>
+							<div class="modal-footer">
+								
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="modal fade" role="dialog"
+			id="timer-entity-tableDeleteConfirm" tabindex="-1"
+			aria-labelledby="timer-entity-tableDeleteConfirmLabel">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header"
+						id="timer-entity-tableDeleteConfirmHeader">
+						<button type="button" class="close" data-dismiss="modal"
+							aria-label="Close">
+							<span aria-hidden="true">�</span>
+						</button>
+						<h2 class="modal-title" id="timer-entity-tableDeleteConfirmLabel">Delete
+							Timers</h2>
+					</div>
+					<div class="modal-body" id="timer-entity-tableDeleteConfirmBody">
+						<div data-row-id="" id="timer-entity-tableDeleteRowId">
+							<p>Are you sure want to delete this item?</p>
+						</div>
+					</div>
+					<div class="modal-footer"
+						id="timer-entity-tableDeleteConfirmFooter">
+						<div>
+							<!-- <button type="reset" class="btn btn-default pull-left"
+								data-dismiss="modal" aria-label="Close">Cancel</button> -->
+							<button type="button" class="btn btn-primary btnCyan"
+								id="timer-entity-tableDeleteButton" data-dismiss="modal"
+								aria-label="Confirm">Agregar</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script th:inline="javascript">
+	/*<![CDATA[*/
+		var vue_geodir_layer_wms = new Vue({
+			el: '#geodir-aviable-layers',
+			data:{
+				server_url: 'http://geoservidorperu.minam.gob.pe/arcgis/services/ServicioTematico/MapServer',
+                server_types: ['GEOSERVER', 'MAPSERVER'],
+                server_typeSelected: 'MAPSERVER',
+                server_version: '1.3.0',
+                layers: [],
+                layer_selected: null
+			},
+			methods: {
+				listLayers() {
+					this.layers = [];
+					this.layer_selected = null;
+					let _urlService = serverContext + 'geodir/ext/layer/listexternallayers';
+					let self = this;
+					$.ajax({
+						  url: _urlService,
+						  type: "get",
+						  data: { 
+							url_Server: self.server_url, 
+							typeServer: self.server_typeSelected, 
+							version: self.server_version
+						  },
+						  success: function(response) {
+							  self.layers = response;
+						  },
+						  error: function(xhr) {
+							  self.layers = [];
+						  }
+					});
+
+                },
+				addLayer: function(layer){
+					this.layer_selected = layer;
+					if(this.nombre != '' && this.url != '' && this.version != ''){
+						var $token = $("meta[name='_csrf']");
+						var $header = $("meta[name='_csrf_header']");
+	
+						let serverContext = [[@{/}]];
+						let _layerWMS = this.layer_selected;
+						let _url = serverContext + 'geodir/ext/layer/addexternalwms';
+						$.ajax({
+							type : 'PUT',
+							contentType : 'application/json',
+							url: _url,
+							dataType : "json",
+							data : JSON.stringify({
+								"name": _layerWMS.name,
+								"alias": _layerWMS.alias,
+								"wmsUrl": _layerWMS.wmsUrl,
+								"layer": _layerWMS.layer,
+								"query": ''
+							})
+						}).done(function(result) {
+							var instance1 = GeodirLayerAdmin.getInstance();
+			            	instance1.addLayers(result); 
+						}).fail(function(jqXHR, status) {
+							alert("Error");
+						});
+					}else{
+						alert("Error");
+					}
+				}
+			}
+		});
+		/*]]>*/
+	</script>
+	</div>
+</body>
+</html>
